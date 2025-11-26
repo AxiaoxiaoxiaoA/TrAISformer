@@ -50,10 +50,11 @@ The visualization covers the following geographic area:
 
 ## Technical Notes
 
-- Built with pure HTML/CSS/SVG - no external dependencies required
-- Works offline without internet connection
+- Built with Leaflet.js and OpenStreetMap tiles for real geographic accuracy
+- Requires internet connection to load map tiles from OpenStreetMap
 - Compatible with all modern browsers
 - Responsive design for different screen sizes
+- All port boundaries and coordinates are accurately plotted on the real map
 
 ## Data Source
 
