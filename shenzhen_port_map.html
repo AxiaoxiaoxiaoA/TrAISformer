@@ -193,17 +193,25 @@
         const landPortsLayer = L.layerGroup();
         const markersLayer = L.layerGroup();
 
-        // Helper function to convert DMS to decimal degrees
+        /**
+         * Convert degrees, minutes, seconds (DMS) to decimal degrees
+         * @param {number} degrees - The degrees component (0-180 for longitude, 0-90 for latitude)
+         * @param {number} minutes - The minutes component (0-59)
+         * @param {number} seconds - The seconds component (0-59.999...)
+         * @returns {number} The coordinate in decimal degrees format
+         */
         function dmsToDecimal(degrees, minutes, seconds) {
             return degrees + minutes / 60 + seconds / 3600;
         }
 
         // ==================== WEST PORT WATER BOUNDARIES ====================
         // Table 1: 西部水域港界控制点坐标
+        // Note: Point C (内伶仃西侧牛利角灯桩) uses approximate coordinates as the 
+        // original document only specifies it as a landmark location without precise DMS values
         const westPortPoints = {
             A: [dmsToDecimal(22, 44, 21), dmsToDecimal(113, 45, 15)],
             B: [dmsToDecimal(22, 44, 8), dmsToDecimal(113, 44, 0)],
-            C: [22.420, 113.770],  // 内伶仃西侧牛利角灯桩 - approximate
+            C: [22.420, 113.770],  // 内伶仃西侧牛利角灯桩 (Neilingding Island west lighthouse)
             D: [dmsToDecimal(22, 14, 34), dmsToDecimal(113, 49, 38)],
             pt6: [dmsToDecimal(22, 30, 36.23), dmsToDecimal(113, 59, 42.20)],
             pt7: [dmsToDecimal(22, 28, 20.49), dmsToDecimal(113, 56, 52.10)],
