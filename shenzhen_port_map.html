@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>深圳港口区域与航线可视化 - OpenStreetMap</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+        }
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+        .info-panel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            max-width: 320px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .info-panel h3 {
+            margin-bottom: 10px;
+            color: #333;
+            border-bottom: 2px solid #0066cc;
+            padding-bottom: 5px;
+            font-size: 16px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+            font-size: 13px;
+        }
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+        }
+        .legend-line {
+            width: 30px;
+            height: 4px;
+            margin-right: 10px;
+        }
+        .layer-control {
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px solid #eee;
+        }
+        .layer-control h4 {
+            margin-bottom: 10px;
+            font-size: 14px;
+            color: #333;
+        }
+        .layer-control label {
+            display: block;
+            margin: 5px 0;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .layer-control input {
+            margin-right: 8px;
+        }
+        .title-bar {
+            position: absolute;
+            top: 10px;
+            left: 60px;
+            z-index: 1000;
+            background: rgba(255,255,255,0.95);
+            padding: 10px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        .title-bar h1 {
+            font-size: 18px;
+            color: #0066cc;
+        }
+        .title-bar p {
+            font-size: 12px;
+            color: #666;
+        }
+        .info-box {
+            margin-top: 15px;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+        .info-box h4 {
+            color: #0066cc;
+            margin-bottom: 5px;
+        }
+        .leaflet-popup-content h4 {
+            color: #0066cc;
+            margin-bottom: 5px;
+        }
+        .leaflet-popup-content p {
+            margin: 5px 0;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <div class="title-bar">
+        <h1>深圳港口章程 - 港口区域与航线可视化</h1>
+        <p>深圳市交通运输局 2023年7月7日发布</p>
+    </div>
+    
+    <div class="info-panel">
+        <h3>图例说明</h3>
+        
+        <div class="legend-item">
+            <div class="legend-color" style="background: rgba(0, 102, 204, 0.3); border-color: #0066cc;"></div>
+            <span>西部港口水域</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: rgba(0, 153, 51, 0.3); border-color: #009933;"></div>
+            <span>东部港口水域</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: rgba(153, 51, 153, 0.3); border-color: #993399;"></div>
+            <span>小漠港区水域</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-line" style="background: #ff6600;"></div>
+            <span>主要航道</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-line" style="background: #00ccff; height: 2px;"></div>
+            <span>支线航道</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: rgba(255, 204, 0, 0.5); border-radius: 50%;"></div>
+            <span>锚地</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: rgba(255, 0, 0, 0.3); border-color: #cc0000;"></div>
+            <span>陆域港区</span>
+        </div>
+        
+        <div class="layer-control">
+            <h4>图层控制</h4>
+            <label><input type="checkbox" id="toggleWest" checked> 西部港口水域</label>
+            <label><input type="checkbox" id="toggleEast" checked> 东部港口水域</label>
+            <label><input type="checkbox" id="toggleXiaomo" checked> 小漠港区水域</label>
+            <label><input type="checkbox" id="toggleChannels" checked> 航道</label>
+            <label><input type="checkbox" id="toggleAnchorages" checked> 锚地</label>
+            <label><input type="checkbox" id="toggleLandPorts" checked> 陆域港区</label>
+            <label><input type="checkbox" id="toggleMarkers" checked> 坐标点标记</label>
+        </div>
+        
+        <div class="info-box" id="infoBox">
+            <h4>深圳港概况</h4>
+            <p>深圳港分为东部港区、西部港区和小漠港区，共有码头泊位174个，其中万吨级及以上泊位78个。</p>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" 
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script>
+        // Initialize the map centered on Shenzhen
+        const map = L.map('map').setView([22.45, 114.0], 10);
+
+        // Add OpenStreetMap tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | 深圳港口章程可视化',
+            maxZoom: 18
+        }).addTo(map);
+
+        // Layer groups for toggling
+        const westPortLayer = L.layerGroup();
+        const eastPortLayer = L.layerGroup();
+        const xiamoPortLayer = L.layerGroup();
+        const channelsLayer = L.layerGroup();
+        const anchoragesLayer = L.layerGroup();
+        const landPortsLayer = L.layerGroup();
+        const markersLayer = L.layerGroup();
+
+        /**
+         * Convert degrees, minutes, seconds (DMS) to decimal degrees
+         * @param {number} degrees - The degrees component (0-180 for longitude, 0-90 for latitude)
+         * @param {number} minutes - The minutes component (0-59)
+         * @param {number} seconds - The seconds component (0-59.999...)
+         * @returns {number} The coordinate in decimal degrees format
+         */
+        function dmsToDecimal(degrees, minutes, seconds) {
+            return degrees + minutes / 60 + seconds / 3600;
+        }
+
+        // ==================== WEST PORT WATER BOUNDARIES ====================
+        // Table 1: 西部水域港界控制点坐标
+        // Note: Point C (内伶仃西侧牛利角灯桩) uses approximate coordinates as the 
+        // original document only specifies it as a landmark location without precise DMS values
+        const westPortPoints = {
+            A: [dmsToDecimal(22, 44, 21), dmsToDecimal(113, 45, 15)],
+            B: [dmsToDecimal(22, 44, 8), dmsToDecimal(113, 44, 0)],
+            C: [22.420, 113.770],  // 内伶仃西侧牛利角灯桩 (Neilingding Island west lighthouse)
+            D: [dmsToDecimal(22, 14, 34), dmsToDecimal(113, 49, 38)],
+            pt6: [dmsToDecimal(22, 30, 36.23), dmsToDecimal(113, 59, 42.20)],
+            pt7: [dmsToDecimal(22, 28, 20.49), dmsToDecimal(113, 56, 52.10)],
+            pt8: [dmsToDecimal(22, 25, 43.7), dmsToDecimal(113, 52, 8.8)],
+            pt9: [dmsToDecimal(22, 20, 0), dmsToDecimal(113, 52, 8.8)],
+            pt10: [dmsToDecimal(22, 16, 23.2), dmsToDecimal(113, 50, 50.6)],
+            pt11: [dmsToDecimal(22, 16, 3.8), dmsToDecimal(113, 50, 20.4)],
+            pt12: [dmsToDecimal(22, 14, 21.4), dmsToDecimal(113, 49, 35.0)]
+        };
+
+        // West Port water boundary polygon
+        const westPortBoundary = [
+            westPortPoints.A,
+            westPortPoints.B,
+            westPortPoints.C,
+            westPortPoints.D,
+            westPortPoints.pt12,
+            westPortPoints.pt11,
+            westPortPoints.pt10,
+            westPortPoints.pt9,
+            westPortPoints.pt8,
+            westPortPoints.pt7,
+            westPortPoints.pt6
+        ];
+
+        const westPortPolygon = L.polygon(westPortBoundary, {
+            color: '#0066cc',
+            fillColor: '#0066cc',
+            fillOpacity: 0.2,
+            weight: 2
+        }).bindPopup('<h4>西部港口水域范围</h4><p>包含南山港区、大铲湾港区、宝安港区等</p><p>毗邻珠江口伶仃洋东岸</p>');
+        westPortLayer.addLayer(westPortPolygon);
+
+        // Add markers for west port control points
+        Object.entries(westPortPoints).forEach(([name, coords]) => {
+            const displayName = name.replace('pt', '');
+            const marker = L.circleMarker(coords, {
+                radius: 6,
+                color: '#0066cc',
+                fillColor: '#0066cc',
+                fillOpacity: 0.8
+            }).bindPopup(`<h4>西部水域控制点 ${displayName}</h4><p>北纬: ${coords[0].toFixed(4)}°</p><p>东经: ${coords[1].toFixed(4)}°</p>`);
+            markersLayer.addLayer(marker);
+        });
+
+        // ==================== EAST PORT WATER BOUNDARIES ====================
+        // Table 2: 东部水域港界控制点坐标
+        const eastPortPoints = {
+            pt1: [dmsToDecimal(22, 32, 37.2), dmsToDecimal(114, 13, 34.85)],
+            pt31: [dmsToDecimal(22, 32, 37.2), dmsToDecimal(114, 14, 1.1)],
+            pt30: [dmsToDecimal(22, 33, 2.6), dmsToDecimal(114, 14, 13.4)],
+            pt29: [dmsToDecimal(22, 33, 20.6), dmsToDecimal(114, 14, 55.2)],
+            pt28: [dmsToDecimal(22, 33, 55.8), dmsToDecimal(114, 16, 33.7)],
+            pt27: [dmsToDecimal(22, 34, 0), dmsToDecimal(114, 18, 32.7)],
+            pt26: [dmsToDecimal(22, 34, 6), dmsToDecimal(114, 19, 58.7)],
+            pt25: [dmsToDecimal(22, 33, 43.2), dmsToDecimal(114, 26, 2.3)],
+            pt24: [dmsToDecimal(22, 32, 41.9), dmsToDecimal(114, 27, 18.5)],
+            pt23: [dmsToDecimal(22, 28, 7.4), dmsToDecimal(114, 27, 17.6)],
+            L1: [dmsToDecimal(22, 26, 14.6), dmsToDecimal(114, 28, 9.4)],
+            L2: [dmsToDecimal(22, 26, 59.5), dmsToDecimal(114, 30, 10.0)]
+        };
+
+        // East Port water boundary polygon
+        const eastPortBoundary = [
+            eastPortPoints.pt1,
+            eastPortPoints.pt31,
+            eastPortPoints.pt30,
+            eastPortPoints.pt29,
+            eastPortPoints.pt28,
+            eastPortPoints.pt27,
+            eastPortPoints.pt26,
+            eastPortPoints.pt25,
+            eastPortPoints.pt24,
+            eastPortPoints.pt23,
+            eastPortPoints.L1,
+            eastPortPoints.L2
+        ];
+
+        const eastPortPolygon = L.polygon(eastPortBoundary, {
+            color: '#009933',
+            fillColor: '#009933',
+            fillOpacity: 0.2,
+            weight: 2
+        }).bindPopup('<h4>东部港口水域范围</h4><p>大鹏湾水域</p><p>包含盐田港区、大鹏港区等</p>');
+        eastPortLayer.addLayer(eastPortPolygon);
+
+        // Add markers for east port control points
+        Object.entries(eastPortPoints).forEach(([name, coords]) => {
+            const displayName = name.replace('pt', '');
+            const marker = L.circleMarker(coords, {
+                radius: 6,
+                color: '#009933',
+                fillColor: '#009933',
+                fillOpacity: 0.8
+            }).bindPopup(`<h4>东部水域控制点 ${displayName}</h4><p>北纬: ${coords[0].toFixed(4)}°</p><p>东经: ${coords[1].toFixed(4)}°</p>`);
+            markersLayer.addLayer(marker);
+        });
+
+        // ==================== XIAOMO PORT WATER BOUNDARIES ====================
+        // Table 3: 小漠港区水域港界控制点坐标
+        const xiamoPortPoints = {
+            pt3: [dmsToDecimal(22, 44, 35.601), dmsToDecimal(115, 2, 15.916)],
+            pt4: [dmsToDecimal(22, 44, 36.547), dmsToDecimal(115, 2, 15.246)],
+            pt5: [dmsToDecimal(22, 44, 50.700), dmsToDecimal(115, 2, 5.221)],
+            pt6: [dmsToDecimal(22, 44, 50.714), dmsToDecimal(115, 2, 5.244)],
+            pt7: [dmsToDecimal(22, 44, 53.974), dmsToDecimal(115, 2, 2.935)],
+            pt120: [dmsToDecimal(22, 44, 29.134), dmsToDecimal(115, 2, 25.882)],
+            pt121: [dmsToDecimal(22, 44, 31.264), dmsToDecimal(115, 2, 25.876)],
+            pt122: [dmsToDecimal(22, 44, 44.265), dmsToDecimal(115, 2, 25.882)],
+            pt123: [dmsToDecimal(22, 44, 48.964), dmsToDecimal(115, 2, 25.939)],
+            pt124: [dmsToDecimal(22, 44, 55.678), dmsToDecimal(115, 2, 9.242)],
+            pt125: [dmsToDecimal(22, 44, 5.477), dmsToDecimal(115, 2, 5.401)]
+        };
+
+        // Xiaomo Port water boundary polygon
+        const xiamoPortBoundary = [
+            xiamoPortPoints.pt3,
+            xiamoPortPoints.pt4,
+            xiamoPortPoints.pt5,
+            xiamoPortPoints.pt6,
+            xiamoPortPoints.pt7,
+            xiamoPortPoints.pt124,
+            xiamoPortPoints.pt123,
+            xiamoPortPoints.pt122,
+            xiamoPortPoints.pt121,
+            xiamoPortPoints.pt120,
+            xiamoPortPoints.pt125
+        ];
+
+        const xiamoPortPolygon = L.polygon(xiamoPortBoundary, {
+            color: '#993399',
+            fillColor: '#993399',
+            fillOpacity: 0.2,
+            weight: 2
+        }).bindPopup('<h4>小漠港区水域范围</h4><p>深汕特别合作区港口</p><p>分期建设中</p>');
+        xiamoPortLayer.addLayer(xiamoPortPolygon);
+
+        // Add markers for Xiaomo port control points
+        Object.entries(xiamoPortPoints).forEach(([name, coords]) => {
+            const displayName = name.replace('pt', '');
+            const marker = L.circleMarker(coords, {
+                radius: 5,
+                color: '#993399',
+                fillColor: '#993399',
+                fillOpacity: 0.8
+            }).bindPopup(`<h4>小漠港区控制点 ${displayName}</h4><p>北纬: ${coords[0].toFixed(4)}°</p><p>东经: ${coords[1].toFixed(4)}°</p>`);
+            markersLayer.addLayer(marker);
+        });
+
+        // ==================== SHIPPING CHANNELS/ROUTES ====================
+        // Main shipping channels based on Table 4
+        const channels = [
+            // 西部航道
+            {
+                name: '铜鼓航道',
+                type: 'main',
+                specs: '20万吨级集装箱船航道，宽度421米，水深-17.5米',
+                coords: [[22.52, 113.72], [22.48, 113.78], [22.44, 113.82], [22.40, 113.85]],
+                color: '#ff6600'
+            },
+            {
+                name: '西部港口公共航道',
+                type: 'main',
+                specs: '20万吨级集装箱船航道，宽度475米，水深-17.5米',
+                coords: [[22.40, 113.85], [22.45, 113.88], [22.50, 113.92]],
+                color: '#ff6600'
+            },
+            {
+                name: '大铲水道',
+                type: 'secondary',
+                specs: '5千吨级航道，宽度300米，乘潮天然航道',
+                coords: [[22.52, 113.88], [22.56, 113.84], [22.60, 113.82]],
+                color: '#00ccff'
+            },
+            {
+                name: '矾石水道',
+                type: 'secondary',
+                specs: '5千吨级航道，宽度300米，乘潮',
+                coords: [[22.46, 113.76], [22.52, 113.74]],
+                color: '#00ccff'
+            },
+            {
+                name: '蛇口航道',
+                type: 'main',
+                specs: '10万吨级航道，宽度190米，水深-15.8米',
+                coords: [[22.47, 113.90], [22.50, 113.93], [22.52, 113.95]],
+                color: '#ff6600'
+            },
+            {
+                name: '赤湾航道',
+                type: 'main',
+                specs: '5万吨级航道，宽度150米，水深-14.3米',
+                coords: [[22.45, 113.88], [22.48, 113.91]],
+                color: '#ff6600'
+            },
+            {
+                name: '机场码头航道',
+                type: 'secondary',
+                specs: '5千吨级航道，宽度190米，双向航道',
+                coords: [[22.60, 113.81], [22.63, 113.83]],
+                color: '#00ccff'
+            },
+            {
+                name: '宝安航道',
+                type: 'secondary',
+                specs: '1万吨级航道，宽度210米，双向航道',
+                coords: [[22.63, 113.83], [22.68, 113.80]],
+                color: '#00ccff'
+            },
+            // 东部航道
+            {
+                name: '三门水道',
+                type: 'main',
+                specs: '10万吨级航道，宽度500米，天然航道，水深-21.0米',
+                coords: [[22.48, 114.35], [22.52, 114.42], [22.55, 114.48]],
+                color: '#ff6600'
+            },
+            {
+                name: '大亚湾航道',
+                type: 'main',
+                specs: '10万吨级航道，宽度1000米，乘潮天然航道',
+                coords: [[22.55, 114.48], [22.58, 114.55], [22.62, 114.62]],
+                color: '#ff6600'
+            },
+            {
+                name: '大鹏湾航道',
+                type: 'main',
+                specs: '20万吨级航道，宽度1000米，天然航道',
+                coords: [[22.50, 114.18], [22.54, 114.22], [22.58, 114.28]],
+                color: '#ff6600'
+            },
+            {
+                name: '盐田港区航道',
+                type: 'main',
+                specs: '20万吨级集装箱船航道，宽度475米，水深-18.0米',
+                coords: [[22.54, 114.22], [22.57, 114.24], [22.60, 114.27]],
+                color: '#ff6600'
+            },
+            {
+                name: '沙鱼涌作业区航道',
+                type: 'secondary',
+                specs: '5千吨级航道，宽度500米，水深-7.0米',
+                coords: [[22.57, 114.36], [22.59, 114.39]],
+                color: '#00ccff'
+            },
+            {
+                name: '下洞作业区航道',
+                type: 'main',
+                specs: '5万吨级航道，宽度190米，水深-15.9米',
+                coords: [[22.59, 114.44], [22.61, 114.48]],
+                color: '#ff6600'
+            },
+            {
+                name: '秤头角LNG航道',
+                type: 'main',
+                specs: '10万吨级航道，宽度300-310米，水深-14.1至-14.8米',
+                coords: [[22.60, 114.50], [22.63, 114.56]],
+                color: '#ff6600'
+            },
+            // 小漠港区航道
+            {
+                name: '小漠港区公共航道',
+                type: 'main',
+                specs: '10万吨级航道，宽度360米，水深-19.7米',
+                coords: [[22.72, 115.00], [22.74, 115.04], [22.76, 115.08]],
+                color: '#ff6600'
+            }
+        ];
+
+        channels.forEach(channel => {
+            const weight = channel.type === 'main' ? 5 : 3;
+            const dashArray = channel.type === 'main' ? null : '8, 6';
+            
+            const polyline = L.polyline(channel.coords, {
+                color: channel.color,
+                weight: weight,
+                dashArray: dashArray,
+                opacity: 0.8
+            }).bindPopup(`<h4>${channel.name}</h4><p>${channel.specs}</p>`);
+            channelsLayer.addLayer(polyline);
+        });
+
+        // ==================== ANCHORAGE AREAS ====================
+        const anchorages = [
+            { name: '黄田3号锚地 SZ1', coords: [22.60, 113.79], radius: 600, desc: '黄田锚地区域' },
+            { name: '矾石锚地 SZ2', coords: [22.52, 113.74], radius: 600, desc: '矾石锚地区域' },
+            { name: '无动力船锚地 SZ3', coords: [22.48, 113.76], radius: 500, desc: '无动力船舶锚地' },
+            { name: '孖洲西危险品锚地 SZ4', coords: [22.42, 113.80], radius: 500, desc: '危险品船舶锚地' },
+            { name: '货船锚地 SZ5', coords: [22.38, 113.84], radius: 600, desc: '一般货船锚地' },
+            { name: '东角头锚地 SZ7', coords: [22.48, 113.95], radius: 500, desc: '东角头锚地区域' },
+            { name: '蛇口小型船舶锚地 SZ8', coords: [22.50, 113.92], radius: 400, desc: '小型船舶锚地' },
+            { name: '大型船舶应急锚地 SZ9', coords: [22.35, 113.88], radius: 800, desc: '大型船舶应急锚地' },
+            { name: '大屿山2号锚地 SZ10', coords: [22.28, 113.92], radius: 700, desc: '大屿山2号锚地' },
+            { name: '大屿山1号锚地 SZ11', coords: [22.30, 113.96], radius: 700, desc: '大屿山1号锚地' },
+            { name: '大铲锚地 SZ12', coords: [22.54, 113.82], radius: 600, desc: '大铲锚地区域' },
+            { name: '汕尾港海丰港区1号锚地', coords: [22.72, 115.12], radius: 500, desc: '海丰港区1号锚地' },
+            { name: '汕尾港海丰港区2号锚地', coords: [22.70, 115.15], radius: 500, desc: '海丰港区2号锚地' }
+        ];
+
+        anchorages.forEach(anchorage => {
+            const circle = L.circle(anchorage.coords, {
+                radius: anchorage.radius,
+                color: '#cc9900',
+                fillColor: '#ffcc00',
+                fillOpacity: 0.4,
+                weight: 2
+            }).bindPopup(`<h4>${anchorage.name}</h4><p>${anchorage.desc}</p>`);
+            anchoragesLayer.addLayer(circle);
+            
+            // Add anchor icon marker
+            const iconHtml = L.divIcon({
+                className: 'anchor-icon',
+                html: '<div style="font-size: 18px; text-align: center;">⚓</div>',
+                iconSize: [24, 24],
+                iconAnchor: [12, 12]
+            });
+            const marker = L.marker(anchorage.coords, { icon: iconHtml })
+                .bindPopup(`<h4>${anchorage.name}</h4><p>${anchorage.desc}</p>`);
+            anchoragesLayer.addLayer(marker);
+        });
+
+        // ==================== LAND PORT AREAS ====================
+        const landPorts = [
+            {
+                name: '南山港区',
+                desc: '以港湾大道-兴海大道-赤湾一路-赤湾二路-妈湾大道为界',
+                coords: [[22.475, 113.895], [22.485, 113.900], [22.490, 113.920], [22.480, 113.925], [22.470, 113.910]]
+            },
+            {
+                name: '大铲湾港区',
+                desc: '北至规划的远洋渔业基地，南至大突堤端部',
+                coords: [[22.530, 113.855], [22.545, 113.860], [22.550, 113.880], [22.540, 113.890], [22.525, 113.870]]
+            },
+            {
+                name: '宝安港区宝安综合作业区',
+                desc: '北侧以塘尾涌为界，南侧以虾山涌为界',
+                coords: [[22.610, 113.825], [22.625, 113.830], [22.630, 113.850], [22.620, 113.860], [22.605, 113.840]]
+            },
+            {
+                name: '宝安港区机场作业区',
+                desc: '北侧以机场现有油码头为界，南侧以新涌为界',
+                coords: [[22.590, 113.810], [22.605, 113.815], [22.610, 113.830], [22.600, 113.840], [22.585, 113.825]]
+            },
+            {
+                name: '大鹏港区下洞作业区',
+                desc: '主要以现有码头管廊带南侧边线为界',
+                coords: [[22.580, 114.425], [22.595, 114.430], [22.600, 114.450], [22.590, 114.460], [22.575, 114.445]]
+            },
+            {
+                name: '大鹏港区沙鱼涌作业区',
+                desc: '西距原下洞港区500米，东至葵涌河口以西900米处',
+                coords: [[22.560, 114.355], [22.575, 114.360], [22.580, 114.380], [22.570, 114.390], [22.555, 114.375]]
+            },
+            {
+                name: '大鹏港区秤头角作业区',
+                desc: '以葵鹏路、金沙西路为界以西',
+                coords: [[22.580, 114.480], [22.595, 114.485], [22.600, 114.510], [22.590, 114.520], [22.575, 114.505]]
+            },
+            {
+                name: '盐田港区',
+                desc: '西起沙头角保税区，东至正角咀',
+                coords: [[22.555, 114.230], [22.575, 114.235], [22.580, 114.290], [22.565, 114.305], [22.550, 114.275]]
+            },
+            {
+                name: '小漠港区',
+                desc: '深汕特别合作区，国际物流港',
+                coords: [[22.745, 115.030], [22.760, 115.035], [22.765, 115.055], [22.755, 115.065], [22.740, 115.050]]
+            }
+        ];
+
+        landPorts.forEach(port => {
+            const polygon = L.polygon(port.coords, {
+                color: '#cc0000',
+                fillColor: '#ff0000',
+                fillOpacity: 0.25,
+                weight: 2
+            }).bindPopup(`<h4>${port.name}</h4><p>${port.desc}</p>`);
+            landPortsLayer.addLayer(polygon);
+        });
+
+        // Add all layers to map
+        westPortLayer.addTo(map);
+        eastPortLayer.addTo(map);
+        xiamoPortLayer.addTo(map);
+        channelsLayer.addTo(map);
+        anchoragesLayer.addTo(map);
+        landPortsLayer.addTo(map);
+        markersLayer.addTo(map);
+
+        // Layer toggle functionality
+        document.getElementById('toggleWest').addEventListener('change', function() {
+            this.checked ? map.addLayer(westPortLayer) : map.removeLayer(westPortLayer);
+        });
+
+        document.getElementById('toggleEast').addEventListener('change', function() {
+            this.checked ? map.addLayer(eastPortLayer) : map.removeLayer(eastPortLayer);
+        });
+
+        document.getElementById('toggleXiaomo').addEventListener('change', function() {
+            this.checked ? map.addLayer(xiamoPortLayer) : map.removeLayer(xiamoPortLayer);
+        });
+
+        document.getElementById('toggleChannels').addEventListener('change', function() {
+            this.checked ? map.addLayer(channelsLayer) : map.removeLayer(channelsLayer);
+        });
+
+        document.getElementById('toggleAnchorages').addEventListener('change', function() {
+            this.checked ? map.addLayer(anchoragesLayer) : map.removeLayer(anchoragesLayer);
+        });
+
+        document.getElementById('toggleLandPorts').addEventListener('change', function() {
+            this.checked ? map.addLayer(landPortsLayer) : map.removeLayer(landPortsLayer);
+        });
+
+        document.getElementById('toggleMarkers').addEventListener('change', function() {
+            this.checked ? map.addLayer(markersLayer) : map.removeLayer(markersLayer);
+        });
+
+        // Add scale control
+        L.control.scale({
+            metric: true,
+            imperial: false,
+            position: 'bottomleft'
+        }).addTo(map);
+
+        // Fit bounds to show all port areas
+        const allBounds = L.latLngBounds([
+            [22.14, 113.44],
+            [22.78, 115.20]
+        ]);
+        map.fitBounds(allBounds);
+    </script>
+</body>
+</html>
