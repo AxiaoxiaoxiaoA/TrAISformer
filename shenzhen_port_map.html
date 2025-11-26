@@ -476,15 +476,15 @@
             <div class="panel">
                 <h3>图例说明</h3>
                 <div class="legend-item">
-                    <div class="legend-color" style="background: rgba(0,102,204,0.3); border-color: #0066cc;"></div>
+                    <div class="legend-color" style="background: rgba(0,102,204,0.25); border-color: #0066cc;"></div>
                     <span>西部港口水域</span>
                 </div>
                 <div class="legend-item">
-                    <div class="legend-color" style="background: rgba(0,153,51,0.3); border-color: #009933;"></div>
+                    <div class="legend-color" style="background: rgba(0,153,51,0.25); border-color: #009933;"></div>
                     <span>东部港口水域</span>
                 </div>
                 <div class="legend-item">
-                    <div class="legend-color" style="background: rgba(153,51,153,0.3); border-color: #993399;"></div>
+                    <div class="legend-color" style="background: rgba(153,51,153,0.25); border-color: #993399;"></div>
                     <span>小漠港区水域</span>
                 </div>
                 <div class="legend-item">
@@ -536,11 +536,11 @@
         const tooltip = document.getElementById('tooltip');
         const infoBox = document.getElementById('infoBox');
         
-        // Toggle layer visibility
+        // Toggle layer visibility (using empty string for SVG elements instead of 'block')
         function toggleLayer(layerId) {
             const layer = document.getElementById(layerId);
             if (layer) {
-                layer.style.display = layer.style.display === 'none' ? 'block' : 'none';
+                layer.style.display = layer.style.display === 'none' ? '' : 'none';
             }
         }
         
@@ -567,34 +567,40 @@
             svg.style.transformOrigin = 'top left';
         }
         
-        // Tooltip handling
-        document.querySelectorAll('.port-area').forEach(el => {
-            el.addEventListener('mouseenter', (e) => {
+        // Tooltip handling using event delegation for better performance
+        svg.addEventListener('mouseenter', (e) => {
+            if (e.target.classList.contains('port-area')) {
                 const name = e.target.dataset.name;
                 const desc = e.target.dataset.desc;
                 if (name) {
                     tooltip.innerHTML = `<h5>${name}</h5><p>${desc || ''}</p>`;
                     tooltip.style.display = 'block';
                 }
-            });
-            
-            el.addEventListener('mousemove', (e) => {
+            }
+        }, true);
+        
+        svg.addEventListener('mousemove', (e) => {
+            if (e.target.classList.contains('port-area')) {
                 tooltip.style.left = (e.clientX + 15) + 'px';
                 tooltip.style.top = (e.clientY + 15) + 'px';
-            });
-            
-            el.addEventListener('mouseleave', () => {
+            }
+        }, true);
+        
+        svg.addEventListener('mouseleave', (e) => {
+            if (e.target.classList.contains('port-area')) {
                 tooltip.style.display = 'none';
-            });
-            
-            el.addEventListener('click', (e) => {
+            }
+        }, true);
+        
+        svg.addEventListener('click', (e) => {
+            if (e.target.classList.contains('port-area')) {
                 const name = e.target.dataset.name;
                 const desc = e.target.dataset.desc;
                 if (name) {
                     infoBox.innerHTML = `<h4>${name}</h4><p>${desc || '暂无详细描述'}</p>`;
                 }
-            });
-        });
+            }
+        }, true);
         
         // Initial state - hide grid
         document.getElementById('gridLines').style.display = 'none';

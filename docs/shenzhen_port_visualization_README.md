@@ -37,10 +37,10 @@ This is an interactive web visualization of Shenzhen Port areas and shipping rou
 
 | Channel Name | Capacity | Notes |
 |-------------|----------|-------|
-| 铜鼓航道 | 200,000 TEU | Main west channel |
-| 大鹏湾航道 | 200,000 TEU | Natural east channel |
-| 盐田港区航道 | 200,000 TEU | Container ships |
-| 三门水道 | 100,000 TEU | Natural channel |
+| 铜鼓航道 | 20万吨级 (200,000 DWT) | Main west channel |
+| 大鹏湾航道 | 20万吨级 (200,000 DWT) | Natural east channel |
+| 盐田港区航道 | 20万吨级 (200,000 DWT) | Container ships |
+| 三门水道 | 10万吨级 (100,000 DWT) | Natural channel |
 
 ## Coordinate Reference
 
